@@ -292,9 +292,8 @@
   body.session-active .sound-hint { display: none; }
 
   .phases-row { display: none; }
-  .cycle-info { display: none; }
   body.session-active .phases-row { display: flex; }
-  body.session-active .cycle-info { display: block; }
+  body.session-active .cycle-info { display: none; }
 
   body:not(.session-active) { overflow-y: auto; }
   body:not(.session-active) .app.ready { height: auto; min-height: 100%; }
@@ -365,7 +364,7 @@
     <div class="session-time" id="sessionTime">цикл 1 из 5</div>
   </div>
 
-  <div class="cycle-info" id="cycleInfo">5 циклов · ~7 мин</div>
+  <div class="cycle-info" id="cycleInfo">5 циклов · ~1 мин</div>
   <div class="sound-hint" id="soundHint">тихие тоны помогут не смотреть в экран</div>
 
   <button class="start-btn" id="startBtn">Начать практику</button>
@@ -594,7 +593,6 @@ function tick(ts) {
     if (phaseIdx === 0) {
       cycle++;
       if (cycle > MAX_CYCLES) { endSession(); return; }
-      cycleInfo.textContent = `цикл ${cycle} из ${MAX_CYCLES}`;
       sessionFill.style.width = ((cycle - 1) / MAX_CYCLES * 100) + '%';
     }
     startPhase(ts + 16);
@@ -658,7 +656,6 @@ function startBreathing() {
       cycle = 1;
       phaseIdx = 0;
       phaseStart = null;
-      cycleInfo.textContent = `цикл 1 из ${MAX_CYCLES}`;
       sessionWrap.style.display = 'flex';
 
       // Fade in background music
@@ -716,7 +713,7 @@ function resetAndStart() {
   inner.style.transition = 'transform 1s ease';
   label.textContent = 'Готовы?';
   cntDown.textContent = '—';
-  cycleInfo.textContent = '5 циклов · ~7 мин';
+  cycleInfo.textContent = '5 циклов · ~1 мин';
   sessionFill.style.width = '0%';
   finishMsg.classList.remove('show');
   soundHint.style.opacity = '0';
