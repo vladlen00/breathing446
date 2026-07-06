@@ -305,7 +305,7 @@
 </head>
 <body>
 <div class="app">
-<a id="appBackBtn" href="https://vladlen00.github.io/studio/?v=2" style="display:none;position:fixed;top:12px;left:12px;z-index:100;align-items:center;gap:6px;padding:8px 14px;background:rgba(160,120,255,0.15);border:1px solid rgba(160,120,255,0.35);border-radius:12px;color:#e0d8f0;font-size:13px;font-weight:600;text-decoration:none;">← В студию</a>
+<a id="appBackBtn" href="https://vladlen00.github.io/studio/?v=3" style="display:none;position:fixed;top:12px;left:12px;z-index:100;align-items:center;gap:6px;padding:8px 14px;background:rgba(160,120,255,0.15);border:1px solid rgba(160,120,255,0.35);border-radius:12px;color:#e0d8f0;font-size:13px;font-weight:600;text-decoration:none;">← В студию</a>
 
 <audio id="bgAudio" preload="auto" loop>
   <source src="audio.mp3" type="audio/mpeg">
@@ -754,7 +754,7 @@ if (!irenaGetInitData()) {
     var _t = localStorage.getItem("irena_access_token") || "";
     var _e = parseInt(localStorage.getItem("irena_access_token_expires_at") || "0", 10);
     var _r = Math.max(1, Math.round((_e - Date.now()) / 1000));
-    _b.href = "https://vladlen00.github.io/studio/?v=2" + (_t ? ("#irena_token=" + encodeURIComponent(_t) + "&exp=" + encodeURIComponent(_r)) : "");
+    _b.href = "https://vladlen00.github.io/studio/?v=3" + (_t ? ("#irena_token=" + encodeURIComponent(_t) + "&exp=" + encodeURIComponent(_r)) : "");
     _b.style.display = "inline-flex";
   }
 }
