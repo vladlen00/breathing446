@@ -328,6 +328,21 @@ function irenaReturnUrl() {
 
   body:not(.session-active) { overflow-y: auto; }
   body:not(.session-active) .app.ready { height: auto; min-height: 100%; }
+
+  /* Duration picker (input screen only) */
+  .dur-row { display: flex; gap: 8px; justify-content: center; width: 100%; }
+  .dur-btn {
+    flex: 1 1 0; min-width: 0; min-height: 44px;
+    background: none; border: 1px solid rgba(142,245,238,0.22); border-radius: 40px;
+    color: rgba(142,245,238,0.6); font-family: 'Jost', sans-serif; font-weight: 300;
+    font-size: 0.8rem; letter-spacing: 0.12em; padding: 10px 6px; cursor: pointer;
+    -webkit-tap-highlight-color: transparent; transition: all 0.3s ease;
+  }
+  .dur-btn.on {
+    border-color: rgba(142,245,238,0.65); color: #fff; background: rgba(142,245,238,0.12);
+    box-shadow: 0 0 18px rgba(142,245,238,0.18);
+  }
+  body.session-active .dur-row { display: none; }
 </style>
 </head>
 <body>
@@ -344,6 +359,13 @@ function irenaReturnUrl() {
   <div class="header-wrap">
     <div class="title">Дыхание 4 · 4 · 6</div>
     <div class="subtitle">Для дня и фокуса</div>
+  </div>
+
+  <div class="dur-row" id="durRow">
+    <button class="dur-btn" type="button" data-v="1">1 мин</button>
+    <button class="dur-btn" type="button" data-v="3">3 мин</button>
+    <button class="dur-btn" type="button" data-v="5">5 мин</button>
+    <button class="dur-btn" type="button" data-v="10">10 мин</button>
   </div>
 
   <div class="info-block" id="infoBlock">
@@ -393,10 +415,8 @@ function irenaReturnUrl() {
 
   <div class="session-bar-wrap" id="sessionBarWrap" style="display:none;">
     <div class="session-bar-track"><div class="session-bar-fill" id="sessionBarFill"></div></div>
-    <div class="session-time" id="sessionTime">цикл 1 из 5</div>
+    <div class="session-time" id="sessionTime"></div>
   </div>
-
-  <div class="cycle-info" id="cycleInfo">5 циклов · ~1 мин</div>
   <div class="sound-hint" id="soundHint">тихие тоны помогут не смотреть в экран</div>
 
   <button class="start-btn" id="startBtn">Начать практику</button>
@@ -645,7 +665,6 @@ function phaseCue(phaseIdx) {
 }
 
 // ── Config ───────────────────────────────────────────────────────────────────
-const MAX_CYCLES = 5;
 const phases = [
   { name: 'Вдох',     duration: 4, scale: 1.18, color: '#8ef5ee' },
   { name: 'Задержка', duration: 4, scale: 1.18, color: '#3dd6c8' },
@@ -653,11 +672,41 @@ const phases = [
 ];
 const CIRCUMFERENCE = 565.5;
 
+// Выбор длительности (минуты). Циклов = вверх до целого, чтобы конец был только после выдоха.
+const CYCLE_SEC = phases.reduce((s, p) => s + p.duration, 0);   // 14
+const DUR_KEY = 'breathing446_duration';
+const DUR_OPTIONS = [1, 3, 5, 10];
+let durMin = 1;   // по умолчанию как было: 5 циклов, ~1 мин
+try {
+  const saved = parseInt(localStorage.getItem(DUR_KEY) || '', 10);
+  if (DUR_OPTIONS.includes(saved)) durMin = saved;
+} catch (e) {}
+let MAX_CYCLES = Math.ceil(durMin * 60 / CYCLE_SEC);
+
+const durRow = document.getElementById('durRow');
+function renderDur() {
+  durRow.querySelectorAll('.dur-btn').forEach(b => {
+    const on = Number(b.dataset.v) === durMin;
+    b.classList.toggle('on', on);
+    b.setAttribute('aria-pressed', on ? 'true' : 'false');
+  });
+}
+durRow.addEventListener('click', e => {
+  const b = e.target.closest('.dur-btn');
+  if (!b || running) return;
+  durMin = Number(b.dataset.v);
+  MAX_CYCLES = Math.ceil(durMin * 60 / CYCLE_SEC);
+  try { localStorage.setItem(DUR_KEY, String(durMin)); } catch (e) {}
+  renderDur();
+});
+renderDur();
+
+function fmtTime(s) { s = Math.floor(s); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); }
+
 const arc         = document.getElementById('progressArc');
 const inner       = document.getElementById('innerCircle');
 const label       = document.getElementById('phaseLabel');
 const cntDown     = document.getElementById('countdown');
-const cycleInfo   = document.getElementById('cycleInfo');
 const startBtn    = document.getElementById('startBtn');
 const dots        = [0,1,2].map(i => document.getElementById('dot'+i));
 const sessionFill = document.getElementById('sessionBarFill');
@@ -715,8 +764,11 @@ function tick(ts) {
 
   setArc(fraction);
   cntDown.textContent = Math.max(Math.ceil(phases[phaseIdx].duration - elapsed), 0);
-  sessionFill.style.width = (cycle / MAX_CYCLES * 100) + '%';
-  sessionTime.textContent = `цикл ${cycle} из ${MAX_CYCLES}`;
+  // Таймер по времени: прошло / выбрано. Хвост до конца последнего выдоха держит выбранное.
+  let done = (cycle - 1) * CYCLE_SEC + Math.min(elapsed, phases[phaseIdx].duration);
+  for (let i = 0; i < phaseIdx; i++) done += phases[i].duration;
+  sessionFill.style.width = Math.min(done / (MAX_CYCLES * CYCLE_SEC) * 100, 100) + '%';
+  sessionTime.textContent = `${fmtTime(Math.min(done, durMin * 60))} / ${fmtTime(durMin * 60)}`;
 
   if (phaseIdx === 0 && Math.random() < 0.04) spawnParticle();
 
@@ -725,7 +777,6 @@ function tick(ts) {
     if (phaseIdx === 0) {
       cycle++;
       if (cycle > MAX_CYCLES) { endSession(); return; }
-      sessionFill.style.width = ((cycle - 1) / MAX_CYCLES * 100) + '%';
     }
     startPhase(ts + 16);
     return;
@@ -823,6 +874,8 @@ function endSession() {
   label.textContent = 'Готово';
   cntDown.textContent = '✓';
   dots.forEach(d => d.classList.remove('active'));
+  // Финал: полоска сразу на 100%, без догоняющей анимации
+  sessionFill.style.transition = 'none';
   sessionFill.style.width = '100%';
 
   // Finishing tone — soft low chord
@@ -844,8 +897,9 @@ function resetAndStart() {
   inner.style.transition = 'transform 1s ease';
   label.textContent = 'Готовы?';
   cntDown.textContent = '—';
-  cycleInfo.textContent = '5 циклов · ~1 мин';
   sessionFill.style.width = '0%';
+  void sessionFill.offsetWidth;          // применить 0% без анимации
+  sessionFill.style.transition = '';     // дальше снова плавно
   finishMsg.classList.remove('show');
   startBreathing();
 }
